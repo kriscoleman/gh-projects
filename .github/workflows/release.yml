@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.1'
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build binaries
+        run: |
+          # Create dist directory
+          mkdir -p dist
+          # Build for different platforms
+          GOOS=linux GOARCH=amd64 go build -ldflags="-X github.com/kriscoleman/gh-projects/internal/commands.version=${{ github.ref_name }}" -o dist/gh-projects-linux-amd64 .
+          GOOS=linux GOARCH=arm64 go build -ldflags="-X github.com/kriscoleman/gh-projects/internal/commands.version=${{ github.ref_name }}" -o dist/gh-projects-linux-arm64 .
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-X github.com/kriscoleman/gh-projects/internal/commands.version=${{ github.ref_name }}" -o dist/gh-projects-darwin-amd64 .
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-X github.com/kriscoleman/gh-projects/internal/commands.version=${{ github.ref_name }}" -o dist/gh-projects-darwin-arm64 .
+          GOOS=windows GOARCH=amd64 go build -ldflags="-X github.com/kriscoleman/gh-projects/internal/commands.version=${{ github.ref_name }}" -o dist/gh-projects-windows-amd64.exe .
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/gh-projects-linux-amd64
+            dist/gh-projects-linux-arm64
+            dist/gh-projects-darwin-amd64
+            dist/gh-projects-darwin-arm64
+            dist/gh-projects-windows-amd64.exe
+          generate_release_notes: true
+          draft: false
+          prerelease: false
